@@ -1970,9 +1970,9 @@ class Database(object):
         self.init(database, **connect_kwargs)
 
         if threadlocals:
-            self.__local = threading.local()
+            self._local = threading.local()
         else:
-            self.__local = type('DummyLocal', (object,), {})
+            self._local = type('DummyLocal', (object,), {})
 
         self._conn_lock = threading.Lock()
         self.autocommit = autocommit
@@ -1994,10 +1994,10 @@ class Database(object):
                 raise Exception('Error, database not properly initialized '
                                 'before opening connection')
             with self.exception_wrapper():
-                self.__local.conn = self._connect(
+                self._local.conn = self._connect(
                     self.database,
                     **self.connect_kwargs)
-                self.__local.closed = False
+                self._local.closed = False
 
     def close(self):
         with self._conn_lock:
@@ -2005,16 +2005,16 @@ class Database(object):
                 raise Exception('Error, database not properly initialized '
                                 'before closing connection')
             with self.exception_wrapper():
-                self._close(self.__local.conn)
-                self.__local.closed = True
+                self._close(self._local.conn)
+                self._local.closed = True
 
     def get_conn(self):
-        if not hasattr(self.__local, 'closed') or self.__local.closed:
+        if not hasattr(self._local, 'closed') or self._local.closed:
             self.connect()
-        return self.__local.conn
+        return self._local.conn
 
     def is_closed(self):
-        return getattr(self.__local, 'closed', True)
+        return getattr(self._local, 'closed', True)
 
     def get_cursor(self):
         return self.get_conn().cursor()
@@ -2073,23 +2073,23 @@ class Database(object):
         self.get_conn().rollback()
 
     def set_autocommit(self, autocommit):
-        self.__local.autocommit = autocommit
+        self._local.autocommit = autocommit
 
     def get_autocommit(self):
-        if not hasattr(self.__local, 'autocommit'):
+        if not hasattr(self._local, 'autocommit'):
             self.set_autocommit(self.autocommit)
-        return self.__local.autocommit
+        return self._local.autocommit
 
     def push_transaction(self, transaction):
-        if not hasattr(self.__local, 'transactions'):
-            self.__local.transactions = []
-        self.__local.transactions.append(transaction)
+        if not hasattr(self._local, 'transactions'):
+            self._local.transactions = []
+        self._local.transactions.append(transaction)
 
     def pop_transaction(self):
-        self.__local.transactions.pop()
+        self._local.transactions.pop()
 
     def transaction_depth(self):
-        return len(getattr(self.__local, 'transactions', ()))
+        return len(getattr(self._local, 'transactions', ()))
 
     def transaction(self):
         return transaction(self)
